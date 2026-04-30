@@ -39,7 +39,7 @@ export default function Home() {
 
     try {
       const res = await axios.post(
-        "http://127.0.0.1:8000/classify",
+        "http://34.226.222.31:8000/classify",
         formData
       );
 
