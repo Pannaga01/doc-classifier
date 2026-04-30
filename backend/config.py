@@ -25,7 +25,6 @@ PROMPT = """Classify this document image into exactly one of these categories:
 - KYC Documents
 - Medical Reports
 - Prescriptions
-- Unknown
 
 Reply with ONLY the category name, nothing else."""
 
