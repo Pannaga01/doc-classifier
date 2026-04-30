@@ -39,7 +39,7 @@ export default function Home() {
 
     try {
       const res = await axios.post(
-        "http://34.226.222.31:8000/classify",
+        "https://kebab-unfazed-specked.ngrok-free.dev/classify",
         formData
       );
 
