@@ -5,7 +5,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-import easyocr
+import pytesseract
+from PIL import Image
 from fastapi import FastAPI, HTTPException,UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from langsmith import traceable,get_current_run_tree
@@ -20,6 +21,8 @@ from config import (
     PROMPT,
     COMPILED_RULES,
 )
+
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 load_dotenv()
 client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
@@ -36,30 +39,48 @@ app.add_middleware(
     allow_headers=["*"],        # allow all headers
 )
 
-# ── OCR reader (initialise once, English only) ────────────────────────────────
-ocr_reader = easyocr.Reader(["en"], gpu=False)
+# ── OCR reader (Tesseract - lightweight for AWS free tier) ────────────────────────────────
 
-@traceable(name="OCR Classification")
+import cv2
+import numpy as np
+
+def preprocess_image(image_path):
+    img = cv2.imread(str(image_path))
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # thresholding improves OCR
+    _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
+
+    return thresh
+
+@traceable(name="Tesseract OCR Classification")
 def classify_via_ocr(image_path: Path) -> str:
-    """Extract text with EasyOCR and match against keyword rules."""
+    """Extract text with Tesseract OCR and match against keyword rules."""
     start = time.time()
-    results = ocr_reader.readtext(str(image_path), detail=0)
-    text = " ".join(results)
 
-    for category, patterns in COMPILED_RULES:
-        if any(pat.search(text) for pat in patterns):
-            duration = time.time() - start
+    try:
+        processed = preprocess_image(image_path)
 
-            run = get_current_run_tree()
-            if run:
-                run.metadata.update({
-                    "stage": "ocr",
-                    "time_taken": duration,
-                    "cost": 0
-                })
-            return category
+        text = pytesseract.image_to_string(processed)
+        text = text.lower()
+        #print(image_path, "OCR Text:", text[:100])  # print first 100 chars of OCR result
+        for category, patterns in COMPILED_RULES:
+            if any(pat.search(text) for pat in patterns):
+                return category
 
-    return "Unknown"
+        return "Unknown"
+
+        # results = ocr_reader.readtext(str(image_path), detail=0)
+        # text = " ".join(results).lower()
+        # #print(image_path, "OCR Text:", text[:100])  # print first 100 chars of OCR result
+        # for category, patterns in COMPILED_RULES:
+        #     if any(pat.search(text) for pat in patterns):
+        #         return category
+        # return "Unknown"
+
+    except Exception as e:
+        print("OCR error:", e)
+        return "Unknown"
 
 @traceable(name="LLM Classification")
 def classify_via_llm(image_path: Path) -> str:

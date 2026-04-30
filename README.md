@@ -33,7 +33,7 @@ This project classifies uploaded documents into the following categories:
 |-----------|------------|
 | Frontend | Next.js, TypeScript, Axios |
 | Backend | FastAPI, Python |
-| OCR | EasyOCR |
+| OCR | Tesseract OCR (lightweight, ideal for AWS free tier) |
 | LLM | Google Gemini (gemma-4-31b-it) |
 | Tracing | LangSmith |
 
@@ -155,10 +155,11 @@ The classification uses a **multi-stage pipeline**:
    - Uses regex pattern: `^bill_` (case-insensitive)
 
 2. **OCR + Keyword Matching**:
-   - Extracts text from the image using EasyOCR
+   - Extracts text from the image using Tesseract OCR
    - Searches the extracted text for category-specific keywords
    - Keywords are matched against patterns like "government of india", "aadhaar", "claim form", "lab report", "prescription", etc.
    - Returns the first matching category
+   - **Why Tesseract?**: Lightweight and memory-efficient, making it ideal for deployment on AWS free tier (limited to 750 hours/month and 1GB memory)
 
 3. **LLM Fallback**:
    - If OCR + keyword matching returns "Unknown", uses Google Gemini
