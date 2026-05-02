@@ -39,12 +39,14 @@ This project classifies uploaded documents into the following categories:
 
 ## Features
 
-- **Hybrid Classification Pipeline**: 
-  1. First tries rule-based keyword matching using OCR
+- **Hybrid Classification Pipeline**:
+  1. First tries file match using Regex
+  1. Then tries rule-based keyword matching using OCR
   2. Falls back to LLM classification if OCR cannot determine the category
 - **Batch Processing**: Upload multiple documents at once
 - **Drag & Drop Interface**: Easy-to-use web interface
 - **Token Usage Tracking**: LangSmith integration for monitoring
+- **AWS Deployment**
 
 ## Project Structure
 
@@ -62,6 +64,29 @@ multimodal-ai/
 │   └── next.config.ts      # Next.js configuration
 └── README.md               # This file
 ```
+## Classification Logic
+
+The classification uses a **multi-stage pipeline**:
+
+1. **Filename Regex Check**:
+   - Files starting with `bill_` are automatically classified as "Patient Bills"
+   - Uses regex pattern: `^bill_` (case-insensitive)
+
+2. **OCR + Keyword Matching**:
+   - Extracts text from the image using Tesseract OCR
+   - Searches the extracted text for category-specific keywords
+   - Keywords are matched against patterns like "government of india", "aadhaar", "claim form", "lab report", "prescription", etc.
+   - Returns the first matching category
+   - **Why Tesseract?**: Lightweight and memory-efficient, making it ideal for deployment on AWS free tier (limited to 750 hours/month and 1GB memory)
+
+3. **LLM Fallback**:
+   - If OCR + keyword matching returns "Unknown", uses Google Gemini
+   - Sends the image with a classification prompt to the model
+   - Model returns the category name
+
+## Deployment
+- Backend - AWS EC2 t3.micro free tier
+- Frontend - Vercel
 
 ## Setup
 
@@ -145,26 +170,6 @@ Classify one or more document images.
   ]
 }
 ```
-
-## Classification Logic
-
-The classification uses a **multi-stage pipeline**:
-
-1. **Filename Regex Check**:
-   - Files starting with `bill_` are automatically classified as "Patient Bills"
-   - Uses regex pattern: `^bill_` (case-insensitive)
-
-2. **OCR + Keyword Matching**:
-   - Extracts text from the image using Tesseract OCR
-   - Searches the extracted text for category-specific keywords
-   - Keywords are matched against patterns like "government of india", "aadhaar", "claim form", "lab report", "prescription", etc.
-   - Returns the first matching category
-   - **Why Tesseract?**: Lightweight and memory-efficient, making it ideal for deployment on AWS free tier (limited to 750 hours/month and 1GB memory)
-
-3. **LLM Fallback**:
-   - If OCR + keyword matching returns "Unknown", uses Google Gemini
-   - Sends the image with a classification prompt to the model
-   - Model returns the category name
 
 ## Environment Variables
 
